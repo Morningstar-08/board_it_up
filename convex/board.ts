@@ -1,4 +1,3 @@
-import { error } from "console";
 import { mutation } from "./_generated/server";
 import { v } from "convex/values";
 
@@ -47,6 +46,18 @@ export const remove = mutation({
       throw new Error("Unauthorized");
     }
 
+    const userId = identiy.subject;
+    const existingFavourite = await ctx.db
+      .query("userFavourites")
+      .withIndex("by_user_board", (q) =>
+        q.eq("userId", userId).eq("boardId", args_0.id)
+      )
+      .unique();
+
+    if (existingFavourite) {
+      await ctx.db.delete(existingFavourite._id);
+    }
+
     await ctx.db.delete(args_0.id);
   },
 });
@@ -93,7 +104,7 @@ export const favourite = mutation({
     const existingFavourite = await ctx.db
       .query("userFavourites")
       .withIndex("by_user_board_org", (q) =>
-        q.eq("userId", userId).eq("boardId", board._id).eq("orgId", args.orgId)
+        q.eq("userId", userId).eq("boardId", board._id)
       )
       .unique();
 

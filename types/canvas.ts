@@ -131,3 +131,10 @@ export type CanvasState =
       mode: CanvasMode.Pressing;
       origin: Point;
     };
+
+export type Layer =
+  | RectangleLayer
+  | EllipseLayer
+  | PathLayer
+  | TextLayer
+  | NoteLayer;

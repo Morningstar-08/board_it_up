@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Info } from "./info";
 import { Participants } from "./participants";
 import { Toolbar } from "./toolbar";
@@ -20,12 +20,15 @@ import {
   useHistory,
   useMutation,
   useOthersMapped,
+  useSelf,
   useStorage,
 } from "@/liveblocks.config";
 import { CursorsPresence } from "./cursors-presence";
 import {
+  colorToCSS,
   connectionIdToColor,
   findIntersectingLayersWithRectangle,
+  penPointsToPathLayer,
   pointerEventToCanvasPoint,
   resizeBounds,
 } from "@/lib/utils";
@@ -34,6 +37,9 @@ import { LiveObject } from "@liveblocks/client";
 import { LayerPreview } from "./layer-preview";
 import { SelectionBox } from "./selection-box";
 import { SelectionTools } from "./selection-tools";
+import { Path } from "./path";
+import { useDisableScrollBounce } from "@/hooks/use-disable-scroll-bounce";
+import { useDeleteLayers } from "@/hooks/use-deletelayers";
 
 const MAX_LAYERS = 100;
 
@@ -43,6 +49,8 @@ interface CanvasProps {
 
 export const Canvas = ({ boardId }: CanvasProps) => {
   const layerIds = useStorage((root) => root.layerIds);
+
+  const pencilDraft = useSelf((me) => me.presence.pencilDraft);
 
   const [canvasState, setCanvasState] = useState<CanvasState>({
     mode: CanvasMode.None,
@@ -54,6 +62,8 @@ export const Canvas = ({ boardId }: CanvasProps) => {
     g: 255,
     b: 255,
   });
+
+  useDisableScrollBounce();
 
   const history = useHistory();
   const canUndo = useCanUndo();
@@ -219,21 +229,34 @@ export const Canvas = ({ boardId }: CanvasProps) => {
     [canvasState.mode]
   );
 
-  const insertPath = useMutation(({ storage, self, setMyPresence }) => {
-    const liveLayers = storage.get("layers");
-    const { pencilDraft } = self.presence;
+  const insertPath = useMutation(
+    ({ storage, self, setMyPresence }) => {
+      const liveLayers = storage.get("layers");
+      const { pencilDraft } = self.presence;
 
-    if (
-      pencilDraft == null ||
-      pencilDraft.length < 2 ||
-      liveLayers.size >= MAX_LAYERS
-    ) {
+      if (
+        pencilDraft == null ||
+        pencilDraft.length < 2 ||
+        liveLayers.size >= MAX_LAYERS
+      ) {
+        setMyPresence({ pencilDraft: null });
+        return;
+      }
+
+      const id = nanoid();
+      liveLayers.set(
+        id,
+        new LiveObject(penPointsToPathLayer(pencilDraft, lastUsedColor))
+      );
+
+      const liveLayerIds = storage.get("layerIds");
+      liveLayerIds.push(id);
+
       setMyPresence({ pencilDraft: null });
-      return;
-    }
-
-    const id = nanoid();
-  }, []);
+      setCanvasState({ mode: CanvasMode.Pencil });
+    },
+    [lastUsedColor]
+  );
 
   const onWheel = useCallback((e: React.WheelEvent) => {
     setCamera((camera) => ({
@@ -286,6 +309,7 @@ export const Canvas = ({ boardId }: CanvasProps) => {
 
       if (canvasState.mode === CanvasMode.Pencil) {
         startDrawing(point, e.pressure);
+        return;
       }
       setCanvasState({ origin: point, mode: CanvasMode.Pressing });
     },
@@ -376,6 +400,31 @@ export const Canvas = ({ boardId }: CanvasProps) => {
     [history]
   );
 
+  const deleteLayers = useDeleteLayers();
+
+  useEffect(() => {
+    function onKeyDown(e: KeyboardEvent) {
+      switch (e.key) {
+        case "z": {
+          if (e.ctrlKey || e.metaKey) {
+            if (e.shiftKey) {
+              history.redo();
+            } else {
+              history.undo();
+            }
+            break;
+          }
+        }
+      }
+    }
+
+    document.addEventListener("keydown", onKeyDown);
+
+    return () => {
+      document.removeEventListener("keydown", onKeyDown);
+    };
+  }, [deleteLayers, history]);
+
   return (
     <main className="h-full w-full relative bg-neutral-100 touch-none">
       <Info boardId={boardId} />
@@ -422,6 +471,14 @@ export const Canvas = ({ boardId }: CanvasProps) => {
               />
             )}
           <CursorsPresence />
+          {pencilDraft != null && pencilDraft.length > 0 && (
+            <Path
+              points={pencilDraft}
+              fill={colorToCSS(lastUsedColor)}
+              x={0}
+              y={0}
+            />
+          )}
         </g>
       </svg>
     </main>

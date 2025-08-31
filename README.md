@@ -1,15 +1,15 @@
-# 🧠 Board-it-up
+# Board-it-up
 
 **Board-it-up** is a Miro-like collaborative whiteboard web application built with [Next.js](https://nextjs.org/), powered by [Convex](https://www.convex.dev/) for the backend and [Liveblocks](https://liveblocks.io/) for real-time collaboration.
 
-## 🚀 Features
+## Features
 
-- ✍️ Collaborative whiteboard interface
-- 🔄 Real-time updates with Liveblocks
-- 📁 Persistent storage using Convex backend
-- 📌 Create, move, and delete elements live
-- 🧑‍🤝‍🧑 Seamless multi-user sessions
-- 💻 Built with modern web technologies (Next.js, TypeScript, etc.)
+- Collaborative whiteboard interface
+- Real-time updates with Liveblocks
+- Persistent storage using Convex backend
+- Create, move, and delete elements live
+- Seamless multi-user sessions
+- Built with modern web technologies (Next.js, TypeScript, etc.)
 
 ## 🔧 Tech Stack
 
@@ -21,7 +21,7 @@
 | **Tailwind CSS**  | Styling UI elements |
 
 
-## 📦 Getting Started
+## Getting Started
 
 ### 1. Clone the repository
 
